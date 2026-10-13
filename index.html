@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Futuristic Portfolio & Admin Portal</title>
+  
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel CDN to compile JSX in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    /* Custom Futuristic Glows & Scrollbar */
+    body {
+      background-color: #05050A;
+      color: #E2E8F0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090A10;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3B82F6;
+    }
+    .grid-bg {
+      background-size: 30px 30px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="grid-bg min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Default Initial Data
+    const initialProjects = [
+      {
+        id: "1",
+        title: "CyberPulse Analytics Engine",
+        category: "AI & Data",
+        description: "High-frequency telemetry dashboard processing over 10M events/sec with real-time neural anomaly detection.",
+        tech: ["React", "TypeScript", "Tailwind", "Python"],
+        link: "#",
+        featured: true
+      },
+      {
+        id: "2",
+        title: "Aetheria DeFi Exchange",
+        category: "Web3",
+        description: "Decentralized liquidity protocol with ultra-low latency automated market making and intuitive multi-chain swap UI.",
+        tech: ["React", "Ethers.js", "Solidity", "Tailwind"],
+        link: "#",
+        featured: true
+      },
+      {
+        id: "3",
+        title: "NeuraCloud Node Sentinel",
+        category: "Cloud Ops",
+        description: "Autonomous server infrastructure orchestrator offering instant failover visualizer and AI automated scaling.",
+        tech: ["React", "Node.js", "Docker", "GraphQL"],
+        link: "#",
+        featured: false
+      }
+    ];
+
+    const initialClients = [
+      { id: "1", name: "Aethelgard Labs", role: "CTO", company: "CyberDyne", quote: "Delivered our flagship interface ahead of schedule with flawless visual fidelity." },
+      { id: "2", name: "Elena Rostova", role: "Product Lead", company: "Aetheria Protocols", quote: "The inquiry portal and sleek UI boosted our enterprise client conversion by 40%." }
+    ];
+
+    function App() {
+      const [view, setView] = useState('user'); // 'user' or 'admin'
+      const [projects, setProjects] = useState(() => {
+        const saved = localStorage.getItem('portfolio_projects');
+        return saved ? JSON.parse(saved) : initialProjects;
+      });
+      const [inquiries, setInquiries] = useState(() => {
+        const saved = localStorage.getItem('portfolio_inquiries');
+        return saved ? JSON.parse(saved) : [];
+      });
+      const [clients, setClients] = useState(() => {
+        const saved = localStorage.getItem('portfolio_clients');
+        return saved ? JSON.parse(saved) : initialClients;
+      });
+
+      // Admin Auth State
+      const [pinInput, setPinInput] = useState('');
+      const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+      const [authError, setAuthError] = useState('');
+
+      // Form Modals
+      const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
+      const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+      const [editingProject, setEditingProject] = useState(null);
+
+      // Form State
+      const [inquiryForm, setInquiryForm] = useState({ name: '', email: '', projectType: 'Web Development', budget: '$1k - $5k', details: '' });
+      const [projectForm, setProjectForm] = useState({ title: '', category: 'Web App', description: '', tech: '', link: '' });
+
+      // Synchronize with LocalStorage
+      useEffect(() => {
+        localStorage.setItem('portfolio_projects', JSON.stringify(projects));
+      }, [projects]);
+
+      useEffect(() => {
+        localStorage.setItem('portfolio_inquiries', JSON.stringify(inquiries));
+      }, [inquiries]);
+
+      useEffect(() => {
+        localStorage.setItem('portfolio_clients', JSON.stringify(clients));
+      }, [clients]);
+
+      // Admin Auth Handler
+      const handleAdminLogin = (e) => {
+        e.preventDefault();
+        if (pinInput === 'admin123') {
+          setIsAdminAuthenticated(true);
+          setAuthError('');
+        } else {
+          setAuthError('Invalid Security PIN. Try "admin123"');
+        }
+      };
+
+      // Inquiry Submission
+      const handleInquirySubmit = (e) => {
+        e.preventDefault();
+        const newInquiry = {
+          id: Date.now().toString(),
+          date: new Date().toLocaleDateString(),
+          status: 'Pending',
+          ...inquiryForm
+        };
+        setInquiries([newInquiry, ...inquiries]);
+        setInquiryForm({ name: '', email: '', projectType: 'Web Development', budget: '$1k - $5k', details: '' });
+        setIsInquiryModalOpen(false);
+        alert('Your project inquiry has been logged successfully!');
+      };
+
+      // Project Save (Add / Edit)
+      const handleProjectSave = (e) => {
+        e.preventDefault();
+        const techArray = projectForm.tech.split(',').map(t => t.trim()).filter(Boolean);
+        
+        if (editingProject) {
+          setProjects(projects.map(p => p.id === editingProject.id ? { ...projectForm, id: p.id, tech: techArray } : p));
+        } else {
+          const newProj = {
+            id: Date.now().toString(),
+            ...projectForm,
+            tech: techArray,
+            featured: true
+          };
+          setProjects([newProj, ...projects]);
+        }
+        
+        setProjectForm({ title: '', category: 'Web App', description: '', tech: '', link: '' });
+        setEditingProject(null);
+        setIsProjectModalOpen(false);
+      };
+
+      const handleDeleteProject = (id) => {
+        if (confirm('Are you sure you want to delete this project?')) {
+          setProjects(projects.filter(p => p.id !== id));
+        }
+      };
+
+      const handleUpdateInquiryStatus = (id, newStatus) => {
+        setInquiries(inquiries.map(i => i.id === id ? { ...i, status: newStatus } : i));
+      };
+
+      return (
+        <div class="min-h-screen text-slate-100 pb-20">
+          
+          {/* Top Navbar */}
+          <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-6 py-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+              <div class="flex items-center space-x-3">
+                <div class="h-3 w-3 rounded-full bg-cyan-400 animate-ping"></div>
+                <span class="text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
+                  NEXUS // PORTFOLIO
+                </span>
+              </div>
+              
+              <div class="flex items-center space-x-4">
+                <button 
+                  onClick={() => setView(view === 'user' ? 'admin' : 'user')}
+                  class={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 border ${
+                    view === 'admin' 
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
+                      : 'bg-slate-800 border-slate-700 hover:border-slate-500 text-slate-300'
+                  }`}
+                >
+                  {view === 'user' ? '⚡ Switch to Admin Panel' : '🌐 View Public Site'}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN CONTENT AREA */}
+          {view === 'user' ? (
+            /* USER VIEW */
+            <main class="max-w-7xl mx-auto px-6 pt-12 space-y-20">
+              
+              {/* Hero Section */}
+              <section class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-6">
+                  <div class="inline-block px-3 py-1 rounded-full text-xs font-mono bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+                    System Online • Available for Commissions
+                  </div>
+                  <h1 class="text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+                    Architecting <br/>
+                    <span class="bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                      Next-Gen Digital Systems
+                    </span>
+                  </h1>
+                  <p class="text-slate-400 text-lg leading-relaxed">
+                    Full-stack engineer specializing in high-performance web applications, interactive futuristic interfaces, and scalable backend infrastructure.
+                  </p>
+                  <div class="flex flex-wrap gap-4 pt-2">
+                    <button 
+                      onClick={() => setIsInquiryModalOpen(true)}
+                      class="px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-semibold text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all"
+                    >
+                      🚀 Initiate Project Inquiry
+                    </button>
+                    <a 
+                      href="#projects" 
+                      class="px-6 py-3.5 rounded-xl glass-panel font-semibold text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 transition-all"
+                    >
+                      Explore Projects ↓
+                    </a>
+                  </div>
+                </div>
+
+                {/* Cyber Card Graphic */}
+                <div class="glass-panel p-8 rounded-2xl border border-slate-800 relative overflow-hidden shadow-2xl">
+                  <div class="absolute -right-10 -top-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl"></div>
+                  <div class="space-y-4 font-mono text-sm">
+                    <div class="flex justify-between border-b border-slate-800 pb-3">
+                      <span class="text-slate-500">// ARCHITECTURE</span>
+                      <span class="text-cyan-400">React 18 + Tailwind</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-3">
+                      <span class="text-slate-500">// DATABASE</span>
+                      <span class="text-indigo-400">Persistent Client Storage</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-3">
+                      <span class="text-slate-500">// LATENCY</span>
+                      <span class="text-emerald-400">&lt; 12ms Response</span>
+                    </div>
+                    <div class="pt-2">
+                      <span class="text-slate-500 block mb-2">// ACTIVE STACK</span>
+                      <div class="flex flex-wrap gap-2">
+                        {['React', 'Node.js', 'Python', 'Tailwind', 'SQL', 'GraphQL'].map(tech => (
+                          <span key={tech} class="px-2.5 py-1 rounded bg-slate-800/80 text-xs border border-slate-700 text-slate-300">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Projects Grid Section */}
+              <section id="projects" class="space-y-8">
+                <div>
+                  <h2 class="text-3xl font-bold tracking-wide">Featured Deployments</h2>
+                  <p class="text-slate-400">Selected production projects & digital experiments</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {projects.map(proj => (
+                    <div key={proj.id} class="glass-panel rounded-2xl p-6 border border-slate-800 hover:border-cyan-500/50 transition-all group flex flex-col justify-between">
+                      <div>
+                        <div class="flex justify-between items-start mb-4">
+                          <span class="text-xs font-mono px-2.5 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50">
+                            {proj.category}
+                          </span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-300 transition-colors">{proj.title}</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed mb-6">{proj.description}</p>
+                      </div>
+
+                      <div>
+                        <div class="flex flex-wrap gap-1.5 mb-6">
+                          {proj.tech.map(t => (
+                            <span key={t} class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                        <a href={proj.link || "#"} class="text-sm font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                          Live Demo System →
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Client Endorsements */}
+              <section class="space-y-8">
+                <h2 class="text-3xl font-bold tracking-wide">Client Testimonials</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                  {clients.map(c => (
+                    <div key={c.id} class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+                      <p class="text-slate-300 italic">"{c.quote}"</p>
+                      <div>
+                        <div class="font-bold text-white">{c.name}</div>
+                        <div class="text-xs text-slate-500">{c.role} @ <span class="text-cyan-400">{c.company}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+            </main>
+          ) : (
+            /* ADMIN VIEW CONTROL PANEL */
+            <div class="max-w-7xl mx-auto px-6 pt-8 space-y-8">
+              {!isAdminAuthenticated ? (
+                /* Admin Login Prompt */
+                <div class="max-w-md mx-auto glass-panel p-8 rounded-2xl border border-slate-800 space-y-6 text-center mt-12">
+                  <div class="h-12 w-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto text-xl">
+                    🔐
+                  </div>
+                  <h2 class="text-2xl font-bold">Admin Control Portal</h2>
+                  <p class="text-slate-400 text-sm">Enter security PIN to manage portfolio database.</p>
+                  
+                  <form onSubmit={handleAdminLogin} class="space-y-4">
+                    <input 
+                      type="password"
+                      placeholder="Enter PIN (Default: admin123)"
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value)}
+                      class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-center text-lg font-mono tracking-widest text-cyan-300 focus:outline-none focus:border-cyan-500"
+                    />
+                    {authError && <p class="text-red-400 text-xs">{authError}</p>}
+                    <button class="w-full py-3 rounded-xl bg-cyan-500 font-semibold text-slate-950 hover:bg-cyan-400 transition-all">
+                      Authenticate
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                /* Authenticated Admin Dashboard */
+                <div class="space-y-10">
+                  
+                  {/* Stats Overview */}
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                      <div class="text-slate-500 text-xs font-mono mb-1">TOTAL PROJECTS</div>
+                      <div class="text-3xl font-bold text-cyan-400">{projects.length}</div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                      <div class="text-slate-500 text-xs font-mono mb-1">INQUIRIES RECEIVED</div>
+                      <div class="text-3xl font-bold text-indigo-400">{inquiries.length}</div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                      <div class="text-slate-500 text-xs font-mono mb-1">REGISTERED CLIENTS</div>
+                      <div class="text-3xl font-bold text-emerald-400">{clients.length}</div>
+                    </div>
+                  </div>
+
+                  {/* Project Management */}
+                  <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                      <h3 class="text-2xl font-bold">Manage Projects</h3>
+                      <button 
+                        onClick={() => { setEditingProject(null); setProjectForm({ title: '', category: 'Web App', description: '', tech: '', link: '' }); setIsProjectModalOpen(true); }}
+                        class="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-semibold text-sm hover:bg-cyan-400"
+                      >
+                        + Add New Project
+                      </button>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl overflow-hidden border border-slate-800">
+                      <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-900/80 text-slate-400 font-mono text-xs border-b border-slate-800">
+                          <tr>
+                            <th class="p-4">TITLE</th>
+                            <th class="p-4">CATEGORY</th>
+                            <th class="p-4">TECH STACK</th>
+                            <th class="p-4 text-right">ACTIONS</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60">
+                          {projects.map(p => (
+                            <tr key={p.id} class="hover:bg-slate-900/40">
+                              <td class="p-4 font-semibold text-slate-200">{p.title}</td>
+                              <td class="p-4 text-slate-400">{p.category}</td>
+                              <td class="p-4 text-slate-400">{p.tech.join(', ')}</td>
+                              <td class="p-4 text-right space-x-2">
+                                <button 
+                                  onClick={() => { setEditingProject(p); setProjectForm({ title: p.title, category: p.category, description: p.description, tech: p.tech.join(', '), link: p.link || '' }); setIsProjectModalOpen(true); }}
+                                  class="px-3 py-1 rounded bg-slate-800 text-cyan-400 hover:bg-slate-700 text-xs"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteProject(p.id)}
+                                  class="px-3 py-1 rounded bg-red-950/50 border border-red-900 text-red-400 hover:bg-red-900/50 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Inquiry Portal Inbox */}
+                  <div class="space-y-4">
+                    <h3 class="text-2xl font-bold">Client Inquiries Inbox</h3>
+                    {inquiries.length === 0 ? (
+                      <div class="glass-panel p-8 rounded-2xl text-center text-slate-500 border border-slate-800">
+                        No client inquiries submitted yet. Submit one from the public site!
+                      </div>
+                    ) : (
+                      <div class="grid gap-4">
+                        {inquiries.map(inq => (
+                          <div key={inq.id} class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+                            <div class="flex justify-between items-start">
+                              <div>
+                                <h4 class="font-bold text-lg text-white">{inq.name}</h4>
+                                <p class="text-xs text-slate-400">{inq.email} • Budget: <span class="text-emerald-400">{inq.budget}</span></p>
+                              </div>
+                              <select 
+                                value={inq.status}
+                                onChange={(e) => handleUpdateInquiryStatus(inq.id, e.target.value)}
+                                class="bg-slate-900 border border-slate-700 text-xs px-3 py-1.5 rounded-lg text-cyan-300"
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                              </select>
+                            </div>
+                            <p class="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-800/80">{inq.details}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INQUIRY MODAL */}
+          {isInquiryModalOpen && (
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <div class="glass-panel border border-slate-700 w-full max-w-lg rounded-2xl p-6 space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                  <h3 class="text-xl font-bold">Submit Project Inquiry</h3>
+                  <button onClick={() => setIsInquiryModalOpen(false)} class="text-slate-400 hover:text-white">✕</button>
+                </div>
+                <form onSubmit={handleInquirySubmit} class="space-y-4 text-sm">
+                  <div>
+                    <label class="block text-slate-400 mb-1">Your Name</label>
+                    <input required type="text" value={inquiryForm.name} onChange={e => setInquiryForm({...inquiryForm, name: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Email Address</label>
+                    <input required type="email" value={inquiryForm.email} onChange={e => setInquiryForm({...inquiryForm, email: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Project Scope Details</label>
+                    <textarea required rows="3" value={inquiryForm.details} onChange={e => setInquiryForm({...inquiryForm, details: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"></textarea>
+                  </div>
+                  <button class="w-full py-3 rounded-xl bg-cyan-500 font-bold text-slate-950 hover:bg-cyan-400 transition-all">
+                    Submit Inquiry
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* PROJECT ADD/EDIT MODAL */}
+          {isProjectModalOpen && (
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <div class="glass-panel border border-slate-700 w-full max-w-lg rounded-2xl p-6 space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                  <h3 class="text-xl font-bold">{editingProject ? 'Edit Project' : 'Add New Project'}</h3>
+                  <button onClick={() => setIsProjectModalOpen(false)} class="text-slate-400 hover:text-white">✕</button>
+                </div>
+                <form onSubmit={handleProjectSave} class="space-y-4 text-sm">
+                  <div>
+                    <label class="block text-slate-400 mb-1">Project Title</label>
+                    <input required type="text" value={projectForm.title} onChange={e => setProjectForm({...projectForm, title: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Category</label>
+                    <input required type="text" value={projectForm.category} onChange={e => setProjectForm({...projectForm, category: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Tech Stack (comma separated)</label>
+                    <input required type="text" placeholder="React, Node.js, Tailwind" value={projectForm.tech} onChange={e => setProjectForm({...projectForm, tech: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Description</label>
+                    <textarea required rows="3" value={projectForm.description} onChange={e => setProjectForm({...projectForm, description: e.target.value})} class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"></textarea>
+                  </div>
+                  <button class="w-full py-3 rounded-xl bg-cyan-500 font-bold text-slate-950 hover:bg-cyan-400 transition-all">
+                    Save Project
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
